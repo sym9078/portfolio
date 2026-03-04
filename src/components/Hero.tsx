@@ -81,11 +81,3 @@ export default function Hero() {
           </motion.div>
         </motion.div>
       </div>
-
-      {/* Background Text Accent */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[25vw] font-bold text-white/[0.01] pointer-events-none select-none z-0 uppercase tracking-tighter whitespace-nowrap">
-        MARKETER
-      </div>
-    </section>
-  );
-}
