@@ -1,8 +1,10 @@
 import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
+import { ExternalLink, FileText, PlayCircle } from 'lucide-react';
 
 export default function Projects() {
   const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/data')
@@ -11,13 +13,36 @@ export default function Projects() {
         if (data && data.projects) {
           setProjects(data.projects);
         }
+        setLoading(false);
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, []);
 
-  if (projects.length === 0) {
+  if (loading) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">Loading...</div>;
   }
+
+  if (!loading && projects.length === 0) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">No projects found.</div>;
+  }
+
+  const getLinkIcon = (link?: string, type?: string, className: string = "w-6 h-6 text-zinc-500 group-hover:text-indigo-400 transition-colors") => {
+    if (!link) return null;
+    const lowerLink = link.toLowerCase();
+    const isPdf = type === 'pdf' || lowerLink.endsWith('.pdf') || lowerLink.includes('drive.google.com/file/d/') && lowerLink.includes('view');
+    const isVideo = type === 'video' || lowerLink.includes('youtube.com') || lowerLink.includes('youtu.be') || lowerLink.includes('vimeo.com');
+
+    if (isPdf) {
+      return <FileText className={className} />;
+    }
+    if (isVideo) {
+      return <PlayCircle className={className} />;
+    }
+    return <ExternalLink className={className} />;
+  };
 
   return (
     <section className="py-24 px-6 md:px-12 bg-zinc-950 min-h-screen">
@@ -59,6 +84,32 @@ export default function Projects() {
                   <p className="text-zinc-400 leading-relaxed">
                     {project.desc}
                   </p>
+                  {/* Links */}
+                  {(() => {
+                    const links = project.links || [];
+                    // Backward compatibility for old single link
+                    if (project.link && links.length === 0) {
+                      links.push({ url: project.link, type: project.linkType, label: 'Link' });
+                    }
+                    if (links.length === 0) return null;
+                    
+                    return (
+                      <div className="flex flex-wrap gap-3 mt-6">
+                        {links.map((link: any, idx: number) => (
+                          <a
+                            key={idx}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-full text-xs font-medium text-zinc-300 hover:text-indigo-400 transition-colors group/link"
+                          >
+                            {getLinkIcon(link.url, link.type, "w-4 h-4 text-zinc-400 group-hover/link:text-indigo-400 transition-colors")}
+                            {link.label || 'View Link'}
+                          </a>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="md:w-1/6 text-right">

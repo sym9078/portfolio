@@ -15,9 +15,15 @@ export default function AdminPage() {
   }, []);
 
   const fetchData = async () => {
-    const res = await fetch('/api/data');
-    const json = await res.json();
-    setData(json);
+    try {
+      const res = await fetch('/api/data');
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+      setData({ projects: [] }); // Fallback to empty data
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -59,6 +65,27 @@ export default function AdminPage() {
     setData(newData);
   };
 
+  const addLink = (projectIndex: number) => {
+    const newData = { ...data };
+    if (!newData.projects[projectIndex].links) {
+      newData.projects[projectIndex].links = [];
+    }
+    newData.projects[projectIndex].links.push({ url: '', type: 'auto', label: '' });
+    setData(newData);
+  };
+
+  const removeLink = (projectIndex: number, linkIndex: number) => {
+    const newData = { ...data };
+    newData.projects[projectIndex].links.splice(linkIndex, 1);
+    setData(newData);
+  };
+
+  const handleLinkChange = (projectIndex: number, linkIndex: number, field: string, value: string) => {
+    const newData = { ...data };
+    newData.projects[projectIndex].links[linkIndex][field] = value;
+    setData(newData);
+  };
+
   const addProject = () => {
     const newData = { ...data };
     newData.projects.push({
@@ -67,7 +94,9 @@ export default function AdminPage() {
       subtitle: '',
       role: '',
       desc: '',
-      year: new Date().getFullYear().toString()
+      year: new Date().getFullYear().toString(),
+      link: '',
+      links: []
     });
     setData(newData);
   };
@@ -160,6 +189,70 @@ export default function AdminPage() {
                 <div className="md:col-span-2">
                   <label className="block text-zinc-500 text-xs mb-1">Description</label>
                   <textarea value={project.desc} onChange={(e) => handleProjectChange(index, 'desc', e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white h-24" />
+                </div>
+                <div className="md:col-span-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-zinc-500 text-xs">Attachments / Links</label>
+                    <button onClick={() => addLink(index)} className="text-xs text-indigo-400 hover:text-indigo-300">+ Add Link</button>
+                  </div>
+                  
+                  {/* Backward compatibility for old single link */}
+                  {project.link && (!project.links || project.links.length === 0) && (
+                    <div className="flex gap-2 mb-2 items-center">
+                      <span className="text-xs text-zinc-500 w-1/4">Legacy Link:</span>
+                      <select 
+                        value={project.linkType || 'auto'} 
+                        onChange={(e) => handleProjectChange(index, 'linkType', e.target.value)} 
+                        className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white text-sm w-24"
+                      >
+                        <option value="auto">Auto</option>
+                        <option value="pdf">PDF</option>
+                        <option value="video">Video</option>
+                        <option value="external">Link</option>
+                      </select>
+                      <input 
+                        value={project.link || ''} 
+                        onChange={(e) => handleProjectChange(index, 'link', e.target.value)} 
+                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white text-sm" 
+                        placeholder="https://..." 
+                      />
+                      <button onClick={() => {
+                        const newData = { ...data };
+                        newData.projects[index].links = [{ url: project.link, type: project.linkType || 'auto', label: 'Link' }];
+                        newData.projects[index].link = '';
+                        newData.projects[index].linkType = '';
+                        setData(newData);
+                      }} className="px-3 py-2 bg-zinc-800 text-white rounded text-xs hover:bg-zinc-700">Migrate</button>
+                    </div>
+                  )}
+
+                  {(project.links || []).map((link: any, lIndex: number) => (
+                    <div key={lIndex} className="flex gap-2 mb-2 items-center">
+                      <input 
+                        value={link.label || ''} 
+                        onChange={(e) => handleLinkChange(index, lIndex, 'label', e.target.value)} 
+                        className="w-1/4 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white text-sm" 
+                        placeholder="Label (e.g. PDF)" 
+                      />
+                      <select 
+                        value={link.type || 'auto'} 
+                        onChange={(e) => handleLinkChange(index, lIndex, 'type', e.target.value)} 
+                        className="bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white text-sm w-24"
+                      >
+                        <option value="auto">Auto</option>
+                        <option value="pdf">PDF</option>
+                        <option value="video">Video</option>
+                        <option value="external">Link</option>
+                      </select>
+                      <input 
+                        value={link.url || ''} 
+                        onChange={(e) => handleLinkChange(index, lIndex, 'url', e.target.value)} 
+                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white text-sm" 
+                        placeholder="https://..." 
+                      />
+                      <button onClick={() => removeLink(index, lIndex)} className="text-red-400 hover:text-red-300 text-xs px-2">X</button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
