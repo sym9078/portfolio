@@ -1,17 +1,9 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
 import fs from "fs";
+import path from "path";
 
-const db = new Database("portfolio.db");
-
-// Initialize DB
-db.exec(`
-  CREATE TABLE IF NOT EXISTS portfolio_data (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    data TEXT NOT NULL
-  )
-`);
+const DATA_FILE = "portfolio_data.json";
 
 const defaultData = {
   projects: [
@@ -42,10 +34,27 @@ const defaultData = {
   ]
 };
 
-// Insert default data if empty
-const row = db.prepare("SELECT * FROM portfolio_data WHERE id = 1").get();
-if (!row) {
-  db.prepare("INSERT INTO portfolio_data (id, data) VALUES (1, ?)").run(JSON.stringify(defaultData));
+// Initialize JSON DB
+if (!fs.existsSync(DATA_FILE)) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
+}
+
+// Migrate data from SQLite if it exists
+try {
+  if (fs.existsSync("portfolio.db")) {
+    import("better-sqlite3").then(({ default: Database }) => {
+      const db = new Database("portfolio.db");
+      const row = db.prepare("SELECT data FROM portfolio_data WHERE id = 1").get() as any;
+      if (row && row.data) {
+        fs.writeFileSync(DATA_FILE, row.data);
+        console.log("Migrated data from SQLite to JSON");
+      }
+      db.close();
+      fs.renameSync("portfolio.db", "portfolio.db.bak");
+    }).catch(err => console.error("Failed to migrate SQLite data:", err));
+  }
+} catch (e) {
+  console.error("Migration error:", e);
 }
 
 async function startServer() {
@@ -65,8 +74,12 @@ async function startServer() {
   });
 
   app.get("/api/data", (req, res) => {
-    const row = db.prepare("SELECT data FROM portfolio_data WHERE id = 1").get() as any;
-    res.json(JSON.parse(row.data));
+    try {
+      const data = fs.readFileSync(DATA_FILE, "utf-8");
+      res.json(JSON.parse(data));
+    } catch (err) {
+      res.json(defaultData);
+    }
   });
 
   app.post("/api/data", (req, res) => {
@@ -74,7 +87,7 @@ async function startServer() {
     if (token !== "admin-token-123") {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-    db.prepare("UPDATE portfolio_data SET data = ? WHERE id = 1").run(JSON.stringify(data));
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     res.json({ success: true });
   });
 
