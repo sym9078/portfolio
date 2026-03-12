@@ -1,6 +1,5 @@
 import "dotenv/config";
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
 
@@ -74,29 +73,11 @@ if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
 }
 
-// Migrate data from SQLite if it exists
-try {
-  if (fs.existsSync("portfolio.db")) {
-    import("better-sqlite3").then(({ default: Database }) => {
-      const db = new Database("portfolio.db");
-      const row = db.prepare("SELECT data FROM portfolio_data WHERE id = 1").get() as any;
-      if (row && row.data) {
-        fs.writeFileSync(DATA_FILE, row.data);
-        console.log("Migrated data from SQLite to JSON");
-      }
-      db.close();
-      fs.renameSync("portfolio.db", "portfolio.db.bak");
-    }).catch(err => console.error("Failed to migrate SQLite data:", err));
-  }
-} catch (e) {
-  console.error("Migration error:", e);
-}
-
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
 
   // API Routes
   app.post("/api/login", (req, res) => {
@@ -126,7 +107,7 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  app.post("/api/save-image", express.json({ limit: '10mb' }), (req, res) => {
+  app.post("/api/save-image", (req, res) => {
     const { image, filename } = req.body;
     if (!image || !filename) return res.status(400).send('No image data or filename');
     
@@ -134,59 +115,40 @@ async function startServer() {
     const buffer = Buffer.from(base64Data, 'base64');
     
     try {
-      fs.writeFileSync(`public/${filename}`, buffer);
-      res.json({ success: true });
+      const publicDir = path.join(process.cwd(), 'public');
+      if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(publicDir, filename), buffer);
+      
+      // Also write to dist/ if in production so it's served immediately
+      if (process.env.NODE_ENV === "production") {
+        const distDir = path.join(process.cwd(), 'dist');
+        if (fs.existsSync(distDir)) {
+          fs.writeFileSync(path.join(distDir, filename), buffer);
+        }
+      }
+      
+      res.json({ success: true, url: `/${filename}` });
     } catch (error) {
       console.error(error);
       res.status(500).send('Failed to save image');
     }
   });
 
-  app.get("/api/generate-images", async (req, res) => {
-    try {
-      const { GoogleGenAI } = await import("@google/genai");
-      console.log("API Key length:", process.env.GEMINI_API_KEY?.length);
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
-      const bgResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: 'Abstract 3D artwork combining data analysis networks and creative flowing colorful shapes, dark background, high quality, 4k, subtle and elegant.',
-      });
-      for (const part of bgResponse.candidates[0].content.parts) {
-        if (part.inlineData) {
-          fs.writeFileSync('public/profile_bg.png', Buffer.from(part.inlineData.data, 'base64'));
-          break;
-        }
-      }
-
-      const sigResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: 'A cinematic, high-quality still frame from a modern beauty brand film, soft pink and neon lighting, elegant and trendy, 4k.',
-      });
-      for (const part of sigResponse.candidates[0].content.parts) {
-        if (part.inlineData) {
-          fs.writeFileSync('public/creation_sig.png', Buffer.from(part.inlineData.data, 'base64'));
-          break;
-        }
-      }
-      res.json({ success: true });
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static("dist"));
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile("index.html", { root: "dist" });
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 

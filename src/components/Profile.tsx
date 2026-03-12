@@ -1,7 +1,10 @@
 import { motion } from 'motion/react';
 import { Bot, Sparkles, LineChart, Terminal, Video, Image as ImageIcon } from 'lucide-react';
+import { usePortfolio } from '../context/PortfolioContext';
 
 export default function Profile() {
+  const { data } = usePortfolio();
+  
   const workflow = [
     {
       step: "01",
@@ -109,8 +112,8 @@ export default function Profile() {
                       className="relative w-48 p-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 ml-auto -mt-4 z-20"
                     >
                       <img 
-                        src="/creation_sig.png" 
-                        alt="Etude Brand Film Scene" 
+                        src={data.profileImage || "/creation_sig.png"} 
+                        alt="My Work" 
                         className="w-full h-auto rounded-lg"
                         onError={(e) => {
                           // Fallback if image not generated yet

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 
 export default function AdminPage() {
@@ -7,6 +7,9 @@ export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const profileImageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -48,6 +51,38 @@ export default function AdminPage() {
       alert('저장 실패');
     }
     setLoading(false);
+  };
+
+  const handleImageUpload = async (file: File, callback: (url: string) => void) => {
+    if (!file) return;
+    setUploadingImage(true);
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Image = e.target?.result as string;
+      const filename = `upload_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      
+      try {
+        const res = await fetch('/api/save-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Image, filename })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+          callback(result.url);
+        } else {
+          alert('이미지 업로드 실패');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('이미지 업로드 중 오류 발생');
+      } finally {
+        setUploadingImage(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleProjectChange = (index: number, field: string, value: string) => {
@@ -145,7 +180,7 @@ export default function AdminPage() {
             </button>
             <button 
               onClick={handleSave}
-              disabled={loading}
+              disabled={loading || uploadingImage}
               className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm shadow-lg shadow-indigo-500/20"
             >
               {loading ? '저장 중...' : '저장하기'}
@@ -154,6 +189,49 @@ export default function AdminPage() {
         </div>
 
         <div className="space-y-16">
+          {/* Profile Section */}
+          <section>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Profile (MY WORK)</h2>
+            </div>
+            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
+              <label className="block text-zinc-500 text-xs mb-2">My Work Image</label>
+              <div className="flex items-center gap-4">
+                {data.profileImage && (
+                  <img src={data.profileImage} alt="Profile" className="w-24 h-24 object-cover rounded-lg border border-zinc-800" />
+                )}
+                <div className="flex-1">
+                  <input 
+                    value={data.profileImage || ''} 
+                    onChange={(e) => setData({ ...data, profileImage: e.target.value })} 
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white mb-2" 
+                    placeholder="Image URL or upload file" 
+                  />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={profileImageInputRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleImageUpload(e.target.files[0], (url) => {
+                          setData({ ...data, profileImage: url });
+                        });
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={() => profileImageInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="px-4 py-2 bg-zinc-800 text-white rounded text-sm hover:bg-zinc-700 disabled:opacity-50"
+                  >
+                    {uploadingImage ? '업로드 중...' : '이미지 첨부하기'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* Projects Section */}
           <section>
             <div className="flex justify-between items-center mb-6">
@@ -193,7 +271,29 @@ export default function AdminPage() {
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-zinc-500 text-xs mb-1">Image URL</label>
-                      <input value={project.image || ''} onChange={(e) => handleProjectChange(index, 'image', e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white" placeholder="https://..." />
+                      <div className="flex gap-2">
+                        <input value={project.image || ''} onChange={(e) => handleProjectChange(index, 'image', e.target.value)} className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white" placeholder="https://..." />
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          id={`project-image-${index}`}
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleImageUpload(e.target.files[0], (url) => {
+                                handleProjectChange(index, 'image', url);
+                              });
+                            }
+                          }}
+                        />
+                        <button 
+                          onClick={() => document.getElementById(`project-image-${index}`)?.click()}
+                          disabled={uploadingImage}
+                          className="px-4 py-2 bg-zinc-800 text-white rounded text-sm hover:bg-zinc-700 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          이미지 첨부
+                        </button>
+                      </div>
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-zinc-500 text-xs mb-1">Description</label>

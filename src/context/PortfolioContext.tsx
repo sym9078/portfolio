@@ -25,6 +25,7 @@ export interface SkillCategory {
 interface PortfolioData {
   projects: Project[];
   skills: SkillCategory[];
+  profileImage?: string;
 }
 
 interface PortfolioContextType {
@@ -33,7 +34,7 @@ interface PortfolioContextType {
   updateData: (newData: PortfolioData, token: string) => Promise<boolean>;
 }
 
-const defaultData: PortfolioData = { projects: [], skills: [] };
+const defaultData: PortfolioData = { projects: [], skills: [], profileImage: '/creation_sig.png' };
 
 const PortfolioContext = createContext<PortfolioContextType>({
   data: defaultData,
@@ -54,7 +55,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (fetchedData) {
           setData({
             projects: fetchedData.projects || [],
-            skills: fetchedData.skills || []
+            skills: fetchedData.skills || [],
+            profileImage: fetchedData.profileImage || '/creation_sig.png'
           });
         }
         setLoading(false);
