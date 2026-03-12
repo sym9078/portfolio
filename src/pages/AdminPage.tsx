@@ -139,6 +139,37 @@ export default function AdminPage() {
     setData(newData);
   };
 
+  const addSkillCategory = () => {
+    const newData = { ...data };
+    if (!newData.skills) newData.skills = [];
+    newData.skills.push({ category: 'New Category', items: [] });
+    setData(newData);
+  };
+
+  const removeSkillCategory = (catIndex: number) => {
+    const newData = { ...data };
+    newData.skills.splice(catIndex, 1);
+    setData(newData);
+  };
+
+  const handleSkillCategoryChange = (catIndex: number, value: string) => {
+    const newData = { ...data };
+    newData.skills[catIndex].category = value;
+    setData(newData);
+  };
+
+  const addSkillItem = (catIndex: number) => {
+    const newData = { ...data };
+    newData.skills[catIndex].items.push({ name: '', icon: 'Star' });
+    setData(newData);
+  };
+
+  const removeSkillItem = (catIndex: number, itemIndex: number) => {
+    const newData = { ...data };
+    newData.skills[catIndex].items.splice(itemIndex, 1);
+    setData(newData);
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6 pt-20">
@@ -338,17 +369,35 @@ export default function AdminPage() {
           <section>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">Skills (CAPABILITIES)</h2>
+              <button onClick={addSkillCategory} className="text-indigo-400 hover:text-indigo-300 text-sm font-bold">+ 카테고리 추가</button>
             </div>
             
             <div className="grid md:grid-cols-3 gap-6">
               {(data.skills || []).map((category: any, catIndex: number) => (
-                <div key={catIndex} className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
-                  <h3 className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2">
-                    {category.category}
-                  </h3>
+                <div key={catIndex} className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl relative">
+                  <button 
+                    onClick={() => removeSkillCategory(catIndex)}
+                    className="absolute top-4 right-4 text-red-400 hover:text-red-300 text-xs"
+                  >
+                    삭제
+                  </button>
+                  <div className="mb-4 border-b border-zinc-800 pb-2 pr-8">
+                    <input 
+                      value={category.category} 
+                      onChange={(e) => handleSkillCategoryChange(catIndex, e.target.value)} 
+                      className="w-full bg-transparent text-sm font-mono text-zinc-500 uppercase tracking-widest focus:outline-none focus:text-white" 
+                      placeholder="Category Name"
+                    />
+                  </div>
                   <div className="space-y-4">
                     {category.items.map((item: any, itemIndex: number) => (
-                      <div key={itemIndex} className="flex flex-col gap-1">
+                      <div key={itemIndex} className="flex flex-col gap-1 relative pr-6">
+                        <button 
+                          onClick={() => removeSkillItem(catIndex, itemIndex)}
+                          className="absolute top-2 right-0 text-red-400 hover:text-red-300 text-xs"
+                        >
+                          X
+                        </button>
                         <input 
                           value={item.name} 
                           onChange={(e) => handleSkillChange(catIndex, itemIndex, 'name', e.target.value)} 
@@ -366,6 +415,12 @@ export default function AdminPage() {
                         </div>
                       </div>
                     ))}
+                    <button 
+                      onClick={() => addSkillItem(catIndex)}
+                      className="w-full py-2 border border-dashed border-zinc-700 text-zinc-500 rounded hover:text-white hover:border-zinc-500 text-xs mt-2"
+                    >
+                      + 스킬 추가
+                    </button>
                   </div>
                 </div>
               ))}

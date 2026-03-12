@@ -38,10 +38,6 @@ export default function Header() {
     { name: 'PHILOSOPHY', path: '/philosophy' },
   ];
 
-  if (isAdmin) {
-    navLinks.push({ name: 'ADMIN', path: '/admin' });
-  }
-
   // Secret admin access: double click logo
   const handleLogoDoubleClick = () => {
     navigate('/admin');

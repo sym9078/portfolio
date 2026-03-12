@@ -35,7 +35,39 @@ interface PortfolioContextType {
   updateData: (newData: PortfolioData) => Promise<boolean>;
 }
 
-const defaultData: PortfolioData = { projects: [], skills: [], profileImage: '/creation_sig.png' };
+const defaultData: PortfolioData = { 
+  projects: [], 
+  skills: [
+    {
+      category: "AI & Automation",
+      items: [
+        { name: "ChatGPT / Claude", icon: "Bot" },
+        { name: "Midjourney / Stable Diffusion", icon: "ImageIcon" },
+        { name: "Kling / Flow", icon: "Video" },
+        { name: "Zapier / Make", icon: "Zap" }
+      ]
+    },
+    {
+      category: "Performance & Data",
+      items: [
+        { name: "Google Analytics 4", icon: "BarChart3" },
+        { name: "Python (Pandas, Selenium)", icon: "Terminal" },
+        { name: "SQL (BigQuery, MySQL)", icon: "Database" },
+        { name: "Excel / Spreadsheets", icon: "Layout" }
+      ]
+    },
+    {
+      category: "Content & Planning",
+      items: [
+        { name: "Notion / Slack", icon: "Layers" },
+        { name: "Figma", icon: "PenTool" },
+        { name: "Premiere Pro / After Effects", icon: "Video" },
+        { name: "Copywriting", icon: "BookOpen" }
+      ]
+    }
+  ], 
+  profileImage: '/creation_sig.png' 
+};
 
 const PortfolioContext = createContext<PortfolioContextType>({
   data: defaultData,
@@ -70,7 +102,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (supabaseData) {
           setData({
             projects: supabaseData.projects || [],
-            skills: supabaseData.skills || [],
+            skills: supabaseData.skills && supabaseData.skills.length > 0 ? supabaseData.skills : defaultData.skills,
             profileImage: supabaseData.profile_image || '/creation_sig.png'
           });
         }
