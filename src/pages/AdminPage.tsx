@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 
 export default function AdminPage() {
   const { data: contextData, updateData } = usePortfolio();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [data, setData] = useState<any>(null);
@@ -13,10 +14,17 @@ export default function AdminPage() {
   const profileImageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (token === 'admin-token-123') {
-      setIsLoggedIn(true);
-    }
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setIsLoggedIn(true);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -28,16 +36,20 @@ export default function AdminPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === '9078') {
-      localStorage.setItem('adminToken', 'admin-token-123');
-      setIsLoggedIn(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) {
+      alert('로그인 실패: ' + error.message);
     } else {
-      alert('비밀번호가 틀렸습니다.');
+      setIsLoggedIn(true);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsLoggedIn(false);
   };
 
@@ -176,10 +188,17 @@ export default function AdminPage() {
         <form onSubmit={handleLogin} className="bg-zinc-900 p-8 rounded-2xl w-full max-w-md border border-zinc-800">
           <h2 className="text-2xl font-bold text-white mb-6">Admin Login</h2>
           <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일을 입력하세요"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white mb-4 focus:outline-none focus:border-indigo-500"
+          />
+          <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호를 입력하세요 (기본: 9078)"
+            placeholder="비밀번호를 입력하세요"
             className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white mb-6 focus:outline-none focus:border-indigo-500"
           />
           <button type="submit" className="w-full bg-white text-zinc-950 font-bold py-3 rounded-lg hover:bg-zinc-200 transition-colors">
