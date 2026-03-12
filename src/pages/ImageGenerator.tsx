@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
+import { supabase } from '../lib/supabase';
 
 export default function ImageGenerator() {
   const [status, setStatus] = useState('Ready');
@@ -19,7 +20,7 @@ export default function ImageGenerator() {
       let base64Image = '';
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData) {
-          base64Image = `data:image/png;base64,${part.inlineData.data}`;
+          base64Image = part.inlineData.data;
           break;
         }
       }
@@ -28,18 +29,30 @@ export default function ImageGenerator() {
         throw new Error('No image generated');
       }
 
-      setStatus(`Saving ${filename}...`);
-      const saveResponse = await fetch('/api/save-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image, filename }),
-      });
-
-      if (saveResponse.ok) {
-        setStatus(`Success! Image saved to public/${filename}`);
-      } else {
-        throw new Error('Failed to save image to server');
+      setStatus(`Saving ${filename} to Supabase...`);
+      
+      // Convert base64 to Blob
+      const byteCharacters = atob(base64Image);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/png' });
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('portfolio-images')
+        .upload(filename, blob, {
+          upsert: true,
+          contentType: 'image/png'
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      setStatus(`Success! Image saved to Supabase Storage as ${filename}`);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'An error occurred');

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
+import { supabase } from '../lib/supabase';
 
 export default function AdminPage() {
   const { data: contextData, updateData } = usePortfolio();
@@ -27,28 +28,26 @@ export default function AdminPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
-    });
-    const json = await res.json();
-    if (json.success) {
-      localStorage.setItem('adminToken', json.token);
+    if (password === '9078') {
+      localStorage.setItem('adminToken', 'admin-token-123');
       setIsLoggedIn(true);
     } else {
       alert('비밀번호가 틀렸습니다.');
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    setIsLoggedIn(false);
+  };
+
   const handleSave = async () => {
     setLoading(true);
-    const token = localStorage.getItem('adminToken');
-    const success = await updateData(data, token || '');
+    const success = await updateData(data);
     if (success) {
       alert('저장되었습니다.');
     } else {
-      alert('저장 실패');
+      alert('저장 실패. Supabase URL/Key 설정이나 테이블 권한(RLS)을 확인해주세요.');
     }
     setLoading(false);
   };
@@ -57,38 +56,34 @@ export default function AdminPage() {
     if (!file) return;
     setUploadingImage(true);
     
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64Image = e.target?.result as string;
-      const filename = `upload_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-      
-      try {
-        const res = await fetch('/api/save-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Image, filename })
-        });
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `${fileName}`;
+    
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('portfolio-images')
+        .upload(filePath, file);
         
-        const result = await res.json();
-        if (result.success) {
-          callback(result.url);
-        } else {
-          alert('이미지 업로드 실패');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('이미지 업로드 중 오류 발생');
-      } finally {
-        setUploadingImage(false);
-      }
-    };
-    reader.readAsDataURL(file);
+      if (uploadError) throw uploadError;
+      
+      const { data: publicUrlData } = supabase.storage
+        .from('portfolio-images')
+        .getPublicUrl(filePath);
+        
+      callback(publicUrlData.publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert('이미지 업로드 실패: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleProjectChange = (index: number, field: string, value: string) => {
     const newData = { ...data };
     if (field === 'tags') {
-      newData.projects[index][field] = value.split(',').map(t => t.trim()).filter(Boolean);
+      newData.projects[index][field] = value.split(',').map((t: string) => t.trim()).filter(Boolean);
     } else {
       newData.projects[index][field] = value;
     }
@@ -173,7 +168,7 @@ export default function AdminPage() {
           <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
           <div className="flex gap-4">
             <button 
-              onClick={() => { localStorage.removeItem('adminToken'); setIsLoggedIn(false); }}
+              onClick={handleLogout}
               className="px-4 py-2 text-zinc-400 hover:text-white transition-colors text-sm"
             >
               로그아웃

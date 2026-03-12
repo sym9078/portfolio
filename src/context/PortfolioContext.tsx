@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export interface Project {
   id: string;
@@ -31,7 +32,7 @@ interface PortfolioData {
 interface PortfolioContextType {
   data: PortfolioData;
   loading: boolean;
-  updateData: (newData: PortfolioData, token: string) => Promise<boolean>;
+  updateData: (newData: PortfolioData) => Promise<boolean>;
 }
 
 const defaultData: PortfolioData = { projects: [], skills: [], profileImage: '/creation_sig.png' };
@@ -49,39 +50,57 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(fetchedData => {
-        if (fetchedData) {
+    const fetchData = async () => {
+      try {
+        const { data: supabaseData, error } = await supabase
+          .from('site_content')
+          .select('*')
+          .eq('id', 1)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No rows found, use default data
+            console.log('No data found in Supabase, using default data.');
+          } else {
+            throw error;
+          }
+        }
+
+        if (supabaseData) {
           setData({
-            projects: fetchedData.projects || [],
-            skills: fetchedData.skills || [],
-            profileImage: fetchedData.profileImage || '/creation_sig.png'
+            projects: supabaseData.projects || [],
+            skills: supabaseData.skills || [],
+            profileImage: supabaseData.profile_image || '/creation_sig.png'
           });
         }
+      } catch (err) {
+        console.error('Error fetching data from Supabase:', err);
+      } finally {
         setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const updateData = async (newData: PortfolioData, token: string) => {
+  const updateData = async (newData: PortfolioData) => {
     try {
-      const res = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, data: newData }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        setData(newData);
-        return true;
-      }
-      return false;
+      const { error } = await supabase
+        .from('site_content')
+        .upsert({
+          id: 1,
+          projects: newData.projects,
+          skills: newData.skills,
+          profile_image: newData.profileImage
+        });
+
+      if (error) throw error;
+
+      setData(newData);
+      return true;
     } catch (err) {
-      console.error(err);
+      console.error('Error updating data in Supabase:', err);
       return false;
     }
   };
