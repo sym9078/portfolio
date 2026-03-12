@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import fs from "fs";
@@ -13,7 +14,9 @@ const defaultData = {
       subtitle: "Content x AI",
       role: "Content Marketer",
       desc: "뷰티 타겟 트렌드 분석 및 AI 툴 활용 브랜드 필름 제작",
-      year: "2025"
+      year: "2025",
+      image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000&auto=format&fit=crop",
+      tags: ["AI Video", "Brand Strategy"]
     },
     {
       id: "02",
@@ -21,7 +24,9 @@ const defaultData = {
       subtitle: "Performance x Data",
       role: "Performance Marketer",
       desc: "서브컬처 특화관 기획 및 입지 선정 데이터 분석",
-      year: "2024"
+      year: "2024",
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000&auto=format&fit=crop",
+      tags: ["Data Analysis", "Performance"]
     },
     {
       id: "03",
@@ -29,7 +34,37 @@ const defaultData = {
       subtitle: "Data x Automation",
       role: "Data Analyst",
       desc: "글로벌 게임 플랫폼 데이터 분석 및 마케팅 인사이트 도출",
-      year: "2024"
+      year: "2024",
+      image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1000&auto=format&fit=crop",
+      tags: ["Python", "Automation"]
+    }
+  ],
+  skills: [
+    {
+      category: "AI & Automation",
+      items: [
+        { name: "Prompt Engineering", icon: "Bot" },
+        { name: "AI Video (Kling/Flow)", icon: "Video" },
+        { name: "AI Image (Nano banana)", icon: "ImageIcon" },
+        { name: "Python Automation", icon: "Cpu" }
+      ]
+    },
+    {
+      category: "Performance & Data",
+      items: [
+        { name: "Data Analysis (Pandas)", icon: "BarChart3" },
+        { name: "GA4 & Meta Ads", icon: "TrendingUp" },
+        { name: "A/B Testing", icon: "Split" }
+      ]
+    },
+    {
+      category: "Content & Planning",
+      items: [
+        { name: "Trend Catching", icon: "Radar" },
+        { name: "Brand Storytelling", icon: "BookOpen" },
+        { name: "Copywriting", icon: "PenTool" },
+        { name: "Creative Directing", icon: "Lightbulb" }
+      ]
     }
   ]
 };
@@ -91,19 +126,53 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  app.post("/api/save-profile-image", express.json({ limit: '10mb' }), (req, res) => {
-    const { image } = req.body;
-    if (!image) return res.status(400).send('No image data');
+  app.post("/api/save-image", express.json({ limit: '10mb' }), (req, res) => {
+    const { image, filename } = req.body;
+    if (!image || !filename) return res.status(400).send('No image data or filename');
     
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
     
     try {
-      fs.writeFileSync('src/components/profile.png', buffer);
+      fs.writeFileSync(`public/${filename}`, buffer);
       res.json({ success: true });
     } catch (error) {
       console.error(error);
       res.status(500).send('Failed to save image');
+    }
+  });
+
+  app.get("/api/generate-images", async (req, res) => {
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      console.log("API Key length:", process.env.GEMINI_API_KEY?.length);
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      const bgResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: 'Abstract 3D artwork combining data analysis networks and creative flowing colorful shapes, dark background, high quality, 4k, subtle and elegant.',
+      });
+      for (const part of bgResponse.candidates[0].content.parts) {
+        if (part.inlineData) {
+          fs.writeFileSync('public/profile_bg.png', Buffer.from(part.inlineData.data, 'base64'));
+          break;
+        }
+      }
+
+      const sigResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: 'A cinematic, high-quality still frame from a modern beauty brand film, soft pink and neon lighting, elegant and trendy, 4k.',
+      });
+      for (const part of sigResponse.candidates[0].content.parts) {
+        if (part.inlineData) {
+          fs.writeFileSync('public/creation_sig.png', Buffer.from(part.inlineData.data, 'base64'));
+          break;
+        }
+      }
+      res.json({ success: true });
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
     }
   });
 

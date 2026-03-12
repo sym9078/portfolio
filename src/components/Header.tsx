@@ -1,20 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X } from 'lucide-react';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    
+    // Check admin status
+    const checkAdmin = () => {
+      setIsAdmin(localStorage.getItem('adminToken') === 'admin-token-123');
+    };
+    checkAdmin();
+    window.addEventListener('storage', checkAdmin);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('storage', checkAdmin);
+    };
+  }, [location.pathname]); // Re-check on route change
 
   const navLinks = [
     { name: 'HOME', path: '/' },
@@ -23,8 +36,16 @@ export default function Header() {
     { name: 'PROFILE', path: '/profile' },
     { name: 'SKILLS', path: '/skills' },
     { name: 'PHILOSOPHY', path: '/philosophy' },
-    { name: 'ADMIN', path: '/admin' },
   ];
+
+  if (isAdmin) {
+    navLinks.push({ name: 'ADMIN', path: '/admin' });
+  }
+
+  // Secret admin access: double click logo
+  const handleLogoDoubleClick = () => {
+    navigate('/admin');
+  };
 
   return (
     <>
@@ -34,13 +55,14 @@ export default function Header() {
         }`}
       >
         <div className="w-full px-6 md:px-12 flex items-center justify-between">
-          <Link 
-            to="/" 
-            className="text-lg md:text-xl font-bold tracking-tight uppercase z-50 relative mix-blend-difference"
-            onClick={() => setIsMobileMenuOpen(false)}
+          <div 
+            className="text-lg md:text-xl font-bold tracking-tight uppercase z-50 relative mix-blend-difference cursor-pointer"
+            onClick={() => { setIsMobileMenuOpen(false); navigate('/'); }}
+            onDoubleClick={handleLogoDoubleClick}
+            title="Double click for Admin"
           >
             Shinyongmin<span className="font-light text-zinc-400">.Marketer</span>
-          </Link>
+          </div>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-12">

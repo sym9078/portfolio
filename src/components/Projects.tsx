@@ -1,46 +1,28 @@
 import { motion } from 'motion/react';
-import { useState, useEffect } from 'react';
-import { ExternalLink, FileText, PlayCircle } from 'lucide-react';
+import { ExternalLink, FileText, PlayCircle, ArrowUpRight } from 'lucide-react';
+import { usePortfolio } from '../context/PortfolioContext';
 
 export default function Projects() {
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.projects) {
-          setProjects(data.projects);
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
+  const { data, loading } = usePortfolio();
 
   if (loading) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">Loading...</div>;
   }
 
+  const projects = data.projects || [];
+
   if (!loading && projects.length === 0) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">No projects found.</div>;
   }
 
-  const getLinkIcon = (link?: string, type?: string, className: string = "w-6 h-6 text-zinc-500 group-hover:text-indigo-400 transition-colors") => {
+  const getLinkIcon = (link?: string, type?: string, className: string = "w-4 h-4") => {
     if (!link) return null;
     const lowerLink = link.toLowerCase();
     const isPdf = type === 'pdf' || lowerLink.endsWith('.pdf') || lowerLink.includes('drive.google.com/file/d/') && lowerLink.includes('view');
     const isVideo = type === 'video' || lowerLink.includes('youtube.com') || lowerLink.includes('youtu.be') || lowerLink.includes('vimeo.com');
 
-    if (isPdf) {
-      return <FileText className={className} />;
-    }
-    if (isVideo) {
-      return <PlayCircle className={className} />;
-    }
+    if (isPdf) return <FileText className={className} />;
+    if (isVideo) return <PlayCircle className={className} />;
     return <ExternalLink className={className} />;
   };
 
@@ -61,7 +43,7 @@ export default function Projects() {
           </span>
         </motion.div>
 
-        <div className="flex flex-col">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {projects.map((project, index) => (
             <motion.div
               key={index}
@@ -69,52 +51,80 @@ export default function Projects() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="group relative border-b border-zinc-900 py-12 md:py-16 transition-colors hover:bg-zinc-900/30"
+              className="group relative bg-zinc-900/40 border border-zinc-800/50 rounded-3xl overflow-hidden hover:bg-zinc-900/80 hover:border-zinc-700/50 transition-all duration-500 flex flex-col"
             >
-              <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-6">
-                <div className="flex items-baseline gap-6 md:w-1/3">
-                  <span className="font-mono text-zinc-600 text-sm">/{project.id}</span>
-                  <h3 className="text-2xl md:text-4xl font-bold text-white group-hover:text-zinc-300 transition-colors">
-                    {project.title}
-                  </h3>
+              {/* Image Thumbnail */}
+              <div className="relative h-64 overflow-hidden bg-zinc-800">
+                <img 
+                  src={project.image || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop"} 
+                  alt={project.title}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-80" />
+                
+                {/* Top Tags */}
+                <div className="absolute top-4 left-4 flex gap-2">
+                  <span className="px-3 py-1 bg-black/50 backdrop-blur-md border border-white/10 rounded-full text-xs font-medium text-white">
+                    {project.year}
+                  </span>
                 </div>
                 
-                <div className="md:w-1/3">
-                  <span className="block text-zinc-500 text-sm uppercase tracking-wider mb-2">{project.subtitle}</span>
-                  <p className="text-zinc-400 leading-relaxed">
-                    {project.desc}
-                  </p>
-                  {/* Links */}
-                  {(() => {
-                    const links = project.links || [];
-                    // Backward compatibility for old single link
-                    if (project.link && links.length === 0) {
-                      links.push({ url: project.link, type: project.linkType, label: 'Link' });
-                    }
-                    if (links.length === 0) return null;
-                    
-                    return (
-                      <div className="flex flex-wrap gap-3 mt-6">
-                        {links.map((link: any, idx: number) => (
-                          <a
-                            key={idx}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-full text-xs font-medium text-zinc-300 hover:text-indigo-400 transition-colors group/link"
-                          >
-                            {getLinkIcon(link.url, link.type, "w-4 h-4 text-zinc-400 group-hover/link:text-indigo-400 transition-colors")}
-                            {link.label || 'View Link'}
-                          </a>
-                        ))}
-                      </div>
-                    );
-                  })()}
+                <div className="absolute top-4 right-4 w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                  <ArrowUpRight className="w-5 h-5 text-white" />
                 </div>
+              </div>
 
-                <div className="md:w-1/6 text-right">
-                  <span className="font-mono text-zinc-600 text-sm">{project.year}</span>
+              {/* Content */}
+              <div className="p-8 flex flex-col flex-grow">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="font-mono text-indigo-400 text-sm">/{project.id}</span>
+                  <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold">{project.subtitle}</span>
                 </div>
+                
+                <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-indigo-300 transition-colors">
+                  {project.title}
+                </h3>
+                
+                <p className="text-zinc-400 leading-relaxed mb-6 flex-grow text-sm">
+                  {project.desc}
+                </p>
+
+                {/* Tags */}
+                {project.tags && project.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {project.tags.map((tag: string, i: number) => (
+                      <span key={i} className="px-2.5 py-1 bg-zinc-800/50 text-zinc-300 text-xs rounded-md">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Links */}
+                {(() => {
+                  const links = project.links || [];
+                  if ((project as any).link && links.length === 0) {
+                    links.push({ url: (project as any).link, type: (project as any).linkType, label: 'View Project' });
+                  }
+                  if (links.length === 0) return null;
+                  
+                  return (
+                    <div className="flex flex-wrap gap-3 mt-auto pt-4 border-t border-zinc-800/50">
+                      {links.map((link: any, idx: number) => (
+                        <a
+                          key={idx}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-indigo-400 transition-colors group/link"
+                        >
+                          {getLinkIcon(link.url, link.type)}
+                          {link.label || 'View Link'}
+                        </a>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </motion.div>
           ))}

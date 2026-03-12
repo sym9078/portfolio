@@ -9,26 +9,29 @@ import WorkPage from './pages/WorkPage';
 import PhilosophyPage from './pages/PhilosophyPage';
 import AdminPage from './pages/AdminPage';
 import ImageGenerator from './pages/ImageGenerator';
+import { PortfolioProvider } from './context/PortfolioContext';
 
 export default function App() {
   return (
-    <Router>
-      <main className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30 flex flex-col">
-        <Header />
-        <div className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/skills" element={<SkillsPage />} />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/work" element={<WorkPage />} />
-            <Route path="/philosophy" element={<PhilosophyPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/gen-image" element={<ImageGenerator />} />
-          </Routes>
-        </div>
-        <Footer />
-      </main>
-    </Router>
+    <PortfolioProvider>
+      <Router>
+        <main className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30 flex flex-col">
+          <Header />
+          <div className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/skills" element={<SkillsPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/work" element={<WorkPage />} />
+              <Route path="/philosophy" element={<PhilosophyPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/gen-image" element={<ImageGenerator />} />
+            </Routes>
+          </div>
+          <Footer />
+        </main>
+      </Router>
+    </PortfolioProvider>
   );
 }
