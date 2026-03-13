@@ -1,10 +1,27 @@
-import { motion } from 'motion/react';
-import { Bot, Sparkles, LineChart, Terminal, Video, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Bot, Sparkles, LineChart, Terminal, Video, Image as ImageIcon, X } from 'lucide-react';
 import { usePortfolio } from '../context/PortfolioContext';
 
 export default function Profile() {
   const { data } = usePortfolio();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
+  const handleCardClick = () => {
+    setIsModalOpen(true);
+  };
+
+  // Auto-slide effect inside modal
+  useEffect(() => {
+    if (isModalOpen && data.profileImages && data.profileImages.length > 1) {
+      const interval = setInterval(() => {
+        setActiveIndex((prev) => (prev + 1) % data.profileImages!.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isModalOpen, data.profileImages]);
+
   const workflow = [
     {
       step: "01",
@@ -102,28 +119,26 @@ export default function Profile() {
                     ))}
                   </div>
 
-                  {/* AI Signature Floating Card */}
-                  {item.signature && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, rotate: -2 }}
-                      whileInView={{ opacity: 1, y: 0, rotate: -2 }}
-                      whileHover={{ rotate: 0, scale: 1.02 }}
-                      transition={{ duration: 0.4 }}
-                      className="relative w-48 p-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 ml-auto -mt-4 z-20"
+                  {/* AI Signature Static Preview */}
+                  {item.signature && data.profileImages && data.profileImages.length > 0 && (
+                    <div 
+                      className="relative w-48 h-64 ml-auto -mt-4 z-20 group cursor-pointer overflow-hidden rounded-xl border border-zinc-800 shadow-2xl shadow-black/50"
+                      onClick={handleCardClick}
                     >
                       <img 
-                        src={data.profileImage || "/creation_sig.png"} 
-                        alt="My Work" 
-                        className="w-full h-auto rounded-lg"
+                        src={data.profileImages[0] || "/creation_sig.png"} 
+                        alt="My Work Preview" 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         onError={(e) => {
-                          // Fallback if image not generated yet
                           (e.target as HTMLImageElement).src = "https://picsum.photos/seed/beauty-film/400/300";
                         }}
                       />
-                      <div className="absolute -bottom-3 -right-3 bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-lg">
-                        My Work
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="text-white text-xs font-bold uppercase tracking-widest border border-white/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                          Click to Expand
+                        </span>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -131,6 +146,70 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Full Screen Carousel Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 md:p-12"
+          >
+            {/* Close Button */}
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-[110]"
+            >
+              <X size={32} />
+            </button>
+
+            <div className="relative w-full max-w-5xl aspect-video md:aspect-[16/9] overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeIndex}
+                  initial={{ opacity: 0, x: 100, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -100, scale: 1.1 }}
+                  transition={{ 
+                    duration: 0.8, 
+                    ease: [0.16, 1, 0.3, 1] 
+                  }}
+                  className="absolute inset-0"
+                >
+                  <img 
+                    src={data.profileImages![activeIndex]} 
+                    alt={`My Work ${activeIndex}`} 
+                    className="w-full h-full object-contain bg-zinc-900"
+                    referrerPolicy="no-referrer"
+                  />
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Progress Dots */}
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-[110]">
+                {data.profileImages!.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveIndex(idx);
+                    }}
+                    className={`h-1.5 rounded-full transition-all duration-500 ${
+                      idx === activeIndex ? 'w-12 bg-indigo-500' : 'w-2 bg-white/20 hover:bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Counter */}
+              <div className="absolute top-8 left-8 bg-white/10 backdrop-blur-md text-white/70 text-xs font-mono px-3 py-1.5 rounded-full border border-white/10">
+                {String(activeIndex + 1).padStart(2, '0')} / {String(data.profileImages!.length).padStart(2, '0')}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

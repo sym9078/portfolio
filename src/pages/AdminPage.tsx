@@ -182,6 +182,25 @@ export default function AdminPage() {
     setData(newData);
   };
 
+  const addProfileImage = () => {
+    const newData = { ...data };
+    if (!newData.profileImages) newData.profileImages = [];
+    newData.profileImages.push('');
+    setData(newData);
+  };
+
+  const removeProfileImage = (index: number) => {
+    const newData = { ...data };
+    newData.profileImages.splice(index, 1);
+    setData(newData);
+  };
+
+  const handleProfileImageChange = (index: number, value: string) => {
+    const newData = { ...data };
+    newData.profileImages[index] = value;
+    setData(newData);
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6 pt-20">
@@ -238,42 +257,58 @@ export default function AdminPage() {
           <section>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">Profile (MY WORK)</h2>
+              <button 
+                onClick={addProfileImage}
+                className="text-indigo-400 hover:text-indigo-300 text-sm font-bold"
+              >
+                + 이미지 추가
+              </button>
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
-              <label className="block text-zinc-500 text-xs mb-2">My Work Image</label>
-              <div className="flex items-center gap-4">
-                {data.profileImage && (
-                  <img src={data.profileImage} alt="Profile" className="w-24 h-24 object-cover rounded-lg border border-zinc-800" />
-                )}
-                <div className="flex-1">
-                  <input 
-                    value={data.profileImage || ''} 
-                    onChange={(e) => setData({ ...data, profileImage: e.target.value })} 
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white mb-2" 
-                    placeholder="Image URL or upload file" 
-                  />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    ref={profileImageInputRef}
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleImageUpload(e.target.files[0], (url) => {
-                          setData({ ...data, profileImage: url });
-                        });
-                      }
-                    }}
-                  />
+            <div className="space-y-4">
+              {(data.profileImages || []).map((img: string, idx: number) => (
+                <div key={idx} className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl relative">
                   <button 
-                    onClick={() => profileImageInputRef.current?.click()}
-                    disabled={uploadingImage}
-                    className="px-4 py-2 bg-zinc-800 text-white rounded text-sm hover:bg-zinc-700 disabled:opacity-50"
+                    onClick={() => removeProfileImage(idx)}
+                    className="absolute top-4 right-4 text-red-400 hover:text-red-300 text-xs"
                   >
-                    {uploadingImage ? '업로드 중...' : '이미지 첨부하기'}
+                    삭제
                   </button>
+                  <label className="block text-zinc-500 text-xs mb-2">Image {idx + 1}</label>
+                  <div className="flex items-center gap-4">
+                    {img && (
+                      <img src={img} alt={`Profile ${idx}`} className="w-24 h-24 object-cover rounded-lg border border-zinc-800" />
+                    )}
+                    <div className="flex-1">
+                      <input 
+                        value={img} 
+                        onChange={(e) => handleProfileImageChange(idx, e.target.value)} 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-white mb-2" 
+                        placeholder="Image URL or upload file" 
+                      />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        id={`profile-image-upload-${idx}`}
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleImageUpload(e.target.files[0], (url) => {
+                              handleProfileImageChange(idx, url);
+                            });
+                          }
+                        }}
+                      />
+                      <button 
+                        onClick={() => document.getElementById(`profile-image-upload-${idx}`)?.click()}
+                        disabled={uploadingImage}
+                        className="px-4 py-2 bg-zinc-800 text-white rounded text-sm hover:bg-zinc-700 disabled:opacity-50"
+                      >
+                        {uploadingImage ? '업로드 중...' : '이미지 첨부하기'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </section>
 

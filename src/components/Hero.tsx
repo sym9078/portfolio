@@ -69,16 +69,6 @@ export default function Hero() {
           
           {/* Subtle vignette/gradient to blend the bottom of the image */}
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent h-1/4 bottom-0" />
-          
-          {/* Star Icon at bottom right */}
-          <motion.div 
-            initial={{ opacity: 0, rotate: -45, scale: 0.5 }}
-            animate={{ opacity: 1, rotate: 0, scale: 1 }}
-            transition={{ delay: 1.2, duration: 1 }}
-            className="absolute bottom-12 right-12 text-zinc-800"
-          >
-            <Sparkles className="w-16 h-16" />
-          </motion.div>
         </motion.div>
       </div>
 

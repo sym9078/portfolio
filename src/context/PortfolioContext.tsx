@@ -26,7 +26,7 @@ export interface SkillCategory {
 interface PortfolioData {
   projects: Project[];
   skills: SkillCategory[];
-  profileImage?: string;
+  profileImages?: string[];
 }
 
 interface PortfolioContextType {
@@ -66,7 +66,7 @@ const defaultData: PortfolioData = {
       ]
     }
   ], 
-  profileImage: '/creation_sig.png' 
+  profileImages: ['/creation_sig.png'] 
 };
 
 const PortfolioContext = createContext<PortfolioContextType>({
@@ -100,10 +100,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
 
         if (supabaseData) {
+          // Handle legacy profile_image (string) or new profile_images (array)
+          let imgs = supabaseData.profile_images || [];
+          if (imgs.length === 0 && supabaseData.profile_image) {
+            imgs = [supabaseData.profile_image];
+          }
+          if (imgs.length === 0) imgs = defaultData.profileImages || [];
+
           setData({
             projects: supabaseData.projects || [],
             skills: supabaseData.skills && supabaseData.skills.length > 0 ? supabaseData.skills : defaultData.skills,
-            profileImage: supabaseData.profile_image || '/creation_sig.png'
+            profileImages: imgs
           });
         }
       } catch (err) {
@@ -124,7 +131,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           id: 1,
           projects: newData.projects,
           skills: newData.skills,
-          profile_image: newData.profileImage
+          profile_images: newData.profileImages,
+          profile_image: newData.profileImages?.[0] || '' // Sync first image to legacy field
         });
 
       if (error) throw error;
